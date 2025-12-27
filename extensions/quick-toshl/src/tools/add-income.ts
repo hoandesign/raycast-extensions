@@ -33,7 +33,9 @@ type Input = {
 };
 
 export default async function addIncome(input: Input) {
-  const { amount, description, categoryId, tagIds, accountId, currency = "VND", date } = input;
+  // Get user's default currency from Toshl API
+  const apiDefaultCurrency = await toshl.getDefaultCurrency();
+  const { amount, description, categoryId, tagIds, accountId, currency = apiDefaultCurrency, date } = input;
   const parsedAmount = parseAmount(amount);
   const parsedDate = parseDate(date);
 

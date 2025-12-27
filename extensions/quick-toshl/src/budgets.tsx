@@ -2,6 +2,7 @@ import { ActionPanel, Action, List, Icon, Color } from "@raycast/api";
 import { useCachedPromise } from "@raycast/utils";
 import { toshl } from "./utils/toshl";
 import { format, subDays, addDays, isWithinInterval, parseISO } from "date-fns";
+import { formatCurrency } from "./utils/helpers";
 
 export default function Budgets() {
   // Fetch budgets for a wide range to ensure we get current iterations
@@ -72,7 +73,7 @@ export default function Budgets() {
               subtitle={getCategoryNames(budget.categories)}
               accessories={[
                 {
-                  text: `${budget.amount.toFixed(0)} / ${budget.limit.toFixed(0)} ${budget.currency.code}`,
+                  text: `${formatCurrency(budget.amount, budget.currency.code)} / ${formatCurrency(budget.limit, budget.currency.code)}`,
                 },
                 {
                   text: remaining >= 0 ? `${remaining.toFixed(0)} left` : `${Math.abs(remaining).toFixed(0)} over`,
@@ -93,14 +94,17 @@ export default function Budgets() {
                   metadata={
                     <List.Item.Detail.Metadata>
                       <List.Item.Detail.Metadata.Label title="Budget" text={budget.name} />
-                      <List.Item.Detail.Metadata.Label title="Limit" text={`${budget.limit} ${budget.currency.code}`} />
+                      <List.Item.Detail.Metadata.Label
+                        title="Limit"
+                        text={formatCurrency(budget.limit, budget.currency.code)}
+                      />
                       <List.Item.Detail.Metadata.Label
                         title="Spent"
-                        text={`${budget.amount} ${budget.currency.code}`}
+                        text={formatCurrency(budget.amount, budget.currency.code)}
                       />
                       <List.Item.Detail.Metadata.Label
                         title="Remaining"
-                        text={`${remaining} ${budget.currency.code}`}
+                        text={formatCurrency(remaining, budget.currency.code)}
                       />
                       <List.Item.Detail.Metadata.Separator />
                       <List.Item.Detail.Metadata.Label title="Period" text={`${budget.from} to ${budget.to}`} />

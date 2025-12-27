@@ -1,9 +1,10 @@
-import { ActionPanel, Action, Form, useNavigation, showToast, Toast, Icon, getPreferenceValues } from "@raycast/api";
+import { ActionPanel, Action, Form, useNavigation, showToast, Toast, Icon } from "@raycast/api";
 import { useState, useMemo } from "react";
 import { useCachedPromise } from "@raycast/utils";
 import { toshl } from "../utils/toshl";
 import { Transaction, TransactionInput } from "../utils/types";
 import { format } from "date-fns";
+import { CURRENCY_SYMBOLS } from "../utils/helpers";
 
 interface TransactionFormProps {
   type: "expense" | "income";
@@ -22,9 +23,10 @@ export function TransactionForm({ type, transaction, onSubmit }: TransactionForm
   const { data: accounts, isLoading: isLoadingAccounts } = useCachedPromise(() => toshl.getAccounts());
   const { data: currencies, isLoading: isLoadingCurrencies } = useCachedPromise(() => toshl.getCurrencies());
 
-  // Get default currency from preferences
-  const preferences = getPreferenceValues<{ defaultCurrency: string }>();
-  const defaultCurrency = preferences.defaultCurrency || "VND";
+  // Get default currency from Toshl API (/me endpoint)
+  const { data: defaultCurrency, isLoading: isLoadingDefaultCurrency } = useCachedPromise(() =>
+    toshl.getDefaultCurrency(),
+  );
 
   const filteredCategories = useMemo(() => {
     return categories?.filter((c) => c.type === type) || [];
@@ -67,8 +69,8 @@ export function TransactionForm({ type, transaction, onSubmit }: TransactionForm
 
     setIsLoading(true);
     try {
-      // Priority: User selected currency > User default preference > Account currency > USD
-      const currencyCode = values.currency || defaultCurrency;
+      // Priority: User selected currency > User default from Toshl API > USD fallback
+      const currencyCode = values.currency || defaultCurrency || "USD";
       const entryDate = values.date ? format(values.date, "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd");
       const newAmount = parseFloat(values.amount) * (type === "expense" ? -1 : 1);
 
@@ -140,7 +142,14 @@ export function TransactionForm({ type, transaction, onSubmit }: TransactionForm
 
   return (
     <Form
-      isLoading={isLoading || isLoadingCategories || isLoadingTags || isLoadingAccounts || isLoadingCurrencies}
+      isLoading={
+        isLoading ||
+        isLoadingCategories ||
+        isLoadingTags ||
+        isLoadingAccounts ||
+        isLoadingCurrencies ||
+        isLoadingDefaultCurrency
+      }
       actions={
         <ActionPanel>
           <Action.SubmitForm
@@ -159,9 +168,16 @@ export function TransactionForm({ type, transaction, onSubmit }: TransactionForm
       />
 
       <Form.Dropdown id="currency" title="Currency" defaultValue={transaction?.currency?.code || defaultCurrency}>
-        {(Array.isArray(currencies) ? currencies : []).map((currency) => (
-          <Form.Dropdown.Item key={currency.code} value={currency.code} title={`${currency.code}`} />
-        ))}
+        {(Array.isArray(currencies) ? currencies : []).map((currency) => {
+          const symbol = CURRENCY_SYMBOLS[currency.code]?.symbol;
+          return (
+            <Form.Dropdown.Item
+              key={currency.code}
+              value={currency.code}
+              title={symbol ? `${currency.code} (${symbol})` : currency.code}
+            />
+          );
+        })}
       </Form.Dropdown>
 
       <Form.DatePicker id="date" title="Date" type={Form.DatePicker.Type.Date} defaultValue={defaultDate} />
@@ -184,13 +200,10 @@ export function TransactionForm({ type, transaction, onSubmit }: TransactionForm
       </Form.TagPicker>
 
       <Form.Dropdown id="account" title="Account" defaultValue={transaction?.account || (accounts && accounts[0]?.id)}>
-        {accounts?.map((account) => (
-          <Form.Dropdown.Item
-            key={account.id}
-            value={account.id}
-            title={`${account.name} (${account.currency.code})`}
-          />
-        ))}
+        {accounts?.map((account) => {
+          const symbol = CURRENCY_SYMBOLS[account.currency.code]?.symbol || account.currency.code;
+          return <Form.Dropdown.Item key={account.id} value={account.id} title={`${account.name} (${symbol})`} />;
+        })}
       </Form.Dropdown>
 
       <Form.TextArea

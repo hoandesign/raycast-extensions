@@ -5,6 +5,7 @@ import { toshl } from "./utils/toshl";
 import { TransactionForm } from "./components/TransactionForm";
 import { Transaction } from "./utils/types";
 import { format, subDays, subMonths, startOfMonth, endOfMonth } from "date-fns";
+import { formatCurrency } from "./utils/helpers";
 
 // Filter Form Component
 function FilterForm({
@@ -142,6 +143,29 @@ function getDateRangeFromPreset(preset: string, customFrom?: Date | null, custom
   }
 }
 
+function getDateRangeLabel(preset: string, from: string, to: string): string {
+  switch (preset) {
+    case "today":
+      return "Today";
+    case "yesterday":
+      return "Yesterday";
+    case "last_7_days":
+      return "Last 7 Days";
+    case "last_30_days":
+      return "Last 30 Days";
+    case "this_month":
+      return "This Month";
+    case "last_month":
+      return "Last Month";
+    case "last_90_days":
+      return "Last 90 Days";
+    case "custom":
+      return `${from} → ${to}`;
+    default:
+      return "Last 30 Days";
+  }
+}
+
 export default function SearchEntries() {
   const { push, pop } = useNavigation();
   const today = new Date();
@@ -165,6 +189,7 @@ export default function SearchEntries() {
   const { data: categories } = useCachedPromise(() => toshl.getCategories());
   const { data: tags } = useCachedPromise(() => toshl.getTags());
   const { data: accounts } = useCachedPromise(() => toshl.getAccounts());
+  const { data: defaultCurrency } = useCachedPromise(() => toshl.getDefaultCurrency());
 
   const {
     data: transactions,
@@ -252,116 +277,152 @@ export default function SearchEntries() {
     filters.search !== "",
   ].filter(Boolean).length;
 
+  // Group transactions by date
+  const transactionsByDate = useMemo(() => {
+    return filteredTransactions.reduce(
+      (acc, t) => {
+        const date = t.date;
+        if (!acc[date]) acc[date] = [];
+        acc[date].push(t);
+        return acc;
+      },
+      {} as Record<string, Transaction[]>,
+    );
+  }, [filteredTransactions]);
+
+  const sortedDates = Object.keys(transactionsByDate).sort((a, b) => b.localeCompare(a));
+
   return (
     <List
       isLoading={isLoading}
       searchBarPlaceholder="Search entries..."
       onSearchTextChange={(text) => setFilters((f) => ({ ...f, search: text }))}
     >
-      <List.Section
-        title={`${from} → ${to}`}
-        subtitle={`${summary.count} entries | Expenses: ${summary.totalExpenses.toLocaleString()} | Income: ${summary.totalIncome.toLocaleString()} | Net: ${summary.net.toLocaleString()}`}
-      >
-        {filteredTransactions.map((transaction) => {
-          const entryIsTransfer = isTransfer(transaction);
-          const toAccountId = transaction.transaction?.account;
-
-          // Determine icon and subtitle based on type
-          let icon;
-          let subtitle;
-          if (entryIsTransfer) {
-            icon = { source: Icon.Switch, tintColor: Color.Blue };
-            subtitle = `${getAccountName(transaction.account)} → ${toAccountId ? getAccountName(toAccountId) : "Unknown"}`;
-          } else if (transaction.amount < 0) {
-            icon = { source: Icon.ArrowDown, tintColor: Color.Red };
-            subtitle = getCategoryName(transaction.category);
-          } else {
-            icon = { source: Icon.ArrowUp, tintColor: Color.Green };
-            subtitle = getCategoryName(transaction.category);
-          }
-
-          return (
-            <List.Item
-              key={transaction.id}
-              icon={icon}
-              title={transaction.desc || (entryIsTransfer ? "Transfer" : "No Description")}
-              subtitle={subtitle}
-              accessories={[
-                ...(!entryIsTransfer ? [{ text: getTagNames(transaction.tags || []).join(", ") }] : []),
-                {
-                  text: `${Math.abs(transaction.amount).toLocaleString()} ${transaction.currency.code}`,
-                },
-                ...(transaction.repeat ? [{ icon: Icon.ArrowClockwise, tooltip: "Recurring" }] : []),
-                { date: new Date(transaction.date) },
-              ]}
-              actions={
-                <ActionPanel>
-                  <ActionPanel.Section title="Filters">
-                    <Action
-                      title={`Filters${activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}`}
-                      icon={Icon.Filter}
-                      shortcut={{ modifiers: ["cmd"], key: "f" }}
-                      onAction={() =>
-                        push(
-                          <FilterForm
-                            categories={categories || []}
-                            tags={tags || []}
-                            accounts={accounts || []}
-                            onApply={setFilters}
-                          />,
-                        )
-                      }
-                    />
-                    <Action
-                      title="Reset Filters"
-                      icon={Icon.XMarkCircle}
-                      shortcut={{ modifiers: ["cmd", "shift"], key: "r" }}
-                      onAction={() =>
-                        setFilters({
-                          dateRange: "last_30_days",
-                          fromDate: subDays(today, 30),
-                          toDate: today,
-                          type: "all",
-                          category: "",
-                          tags: [],
-                          account: "",
-                          search: "",
-                        })
-                      }
-                    />
-                  </ActionPanel.Section>
-                  <ActionPanel.Section title="Edit">
-                    <Action
-                      title="Edit Entry"
-                      icon={Icon.Pencil}
-                      onAction={() =>
-                        push(
-                          <TransactionForm
-                            type={transaction.amount < 0 ? "expense" : "income"}
-                            transaction={transaction}
-                            onSubmit={async (values) => {
-                              await toshl.updateTransaction(
-                                transaction.id,
-                                values,
-                                transaction.repeat ? "one" : undefined,
-                              );
-                              revalidate();
-                              pop();
-                            }}
-                          />,
-                        )
-                      }
-                    />
-                  </ActionPanel.Section>
-                  <ActionPanel.Section>
-                    <Action.OpenInBrowser title="Open in Toshl" url="https://toshl.com/app/expenses" />
-                  </ActionPanel.Section>
-                </ActionPanel>
-              }
-            />
-          );
-        })}
+      <List.Section title="Summary">
+        <List.Item
+          icon={Icon.BarChart}
+          title={getDateRangeLabel(filters.dateRange, from, to)}
+          accessories={[
+            { text: `${summary.count} entries` },
+            {
+              text: `Expenses: ${formatCurrency(summary.totalExpenses, defaultCurrency || "USD")}`,
+              icon: Icon.ArrowDown,
+            },
+            {
+              text: `Income: ${formatCurrency(summary.totalIncome, defaultCurrency || "USD")}`,
+              icon: Icon.ArrowUp,
+            },
+            {
+              text: `Net: ${summary.net >= 0 ? "+" : ""}${formatCurrency(summary.net, defaultCurrency || "USD")}`,
+              icon: summary.net >= 0 ? Icon.CheckCircle : Icon.ExclamationMark,
+            },
+          ]}
+        />
       </List.Section>
+      {sortedDates.map((date) => (
+        <List.Section key={date} title={format(new Date(date), "EEEE, MMM d, yyyy")}>
+          {transactionsByDate[date].map((transaction) => {
+            const entryIsTransfer = isTransfer(transaction);
+            const toAccountId = transaction.transaction?.account;
+
+            // Determine icon and subtitle based on type
+            let icon;
+            let subtitle;
+            if (entryIsTransfer) {
+              icon = { source: Icon.Switch, tintColor: Color.Blue };
+              subtitle = `${getAccountName(transaction.account)} → ${toAccountId ? getAccountName(toAccountId) : "Unknown"}`;
+            } else if (transaction.amount < 0) {
+              icon = { source: Icon.ArrowDown, tintColor: Color.Red };
+              subtitle = getCategoryName(transaction.category);
+            } else {
+              icon = { source: Icon.ArrowUp, tintColor: Color.Green };
+              subtitle = getCategoryName(transaction.category);
+            }
+
+            return (
+              <List.Item
+                key={transaction.id}
+                icon={icon}
+                title={transaction.desc || (entryIsTransfer ? "Transfer" : "No Description")}
+                subtitle={subtitle}
+                accessories={[
+                  ...(!entryIsTransfer && getTagNames(transaction.tags || []).length > 0
+                    ? [{ text: getTagNames(transaction.tags || []).join(", "), icon: Icon.Tag }]
+                    : []),
+                  ...(transaction.repeat ? [{ icon: Icon.ArrowClockwise, tooltip: "Recurring" }] : []),
+                  {
+                    text: formatCurrency(transaction.amount, transaction.currency.code),
+                  },
+                ]}
+                actions={
+                  <ActionPanel>
+                    <ActionPanel.Section title="Filters">
+                      <Action
+                        title={`Filters${activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}`}
+                        icon={Icon.Filter}
+                        shortcut={{ modifiers: ["cmd"], key: "f" }}
+                        onAction={() =>
+                          push(
+                            <FilterForm
+                              categories={categories || []}
+                              tags={tags || []}
+                              accounts={accounts || []}
+                              onApply={setFilters}
+                            />,
+                          )
+                        }
+                      />
+                      <Action
+                        title="Reset Filters"
+                        icon={Icon.XMarkCircle}
+                        shortcut={{ modifiers: ["cmd", "shift"], key: "r" }}
+                        onAction={() =>
+                          setFilters({
+                            dateRange: "last_30_days",
+                            fromDate: subDays(today, 30),
+                            toDate: today,
+                            type: "all",
+                            category: "",
+                            tags: [],
+                            account: "",
+                            search: "",
+                          })
+                        }
+                      />
+                    </ActionPanel.Section>
+                    <ActionPanel.Section title="Edit">
+                      <Action
+                        title="Edit Entry"
+                        icon={Icon.Pencil}
+                        onAction={() =>
+                          push(
+                            <TransactionForm
+                              type={transaction.amount < 0 ? "expense" : "income"}
+                              transaction={transaction}
+                              onSubmit={async (values) => {
+                                await toshl.updateTransaction(
+                                  transaction.id,
+                                  values,
+                                  transaction.repeat ? "one" : undefined,
+                                );
+                                revalidate();
+                                pop();
+                              }}
+                            />,
+                          )
+                        }
+                      />
+                    </ActionPanel.Section>
+                    <ActionPanel.Section>
+                      <Action.OpenInBrowser title="Open in Toshl" url="https://toshl.com/app/#/expenses" />
+                    </ActionPanel.Section>
+                  </ActionPanel>
+                }
+              />
+            );
+          })}
+        </List.Section>
+      ))}
     </List>
   );
 }

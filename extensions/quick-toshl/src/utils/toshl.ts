@@ -1,20 +1,27 @@
 import axios, { AxiosInstance } from "axios";
 import { getPreferenceValues, showToast, Toast } from "@raycast/api";
-import { Transaction, Category, Tag, TransactionInput, TransferInput, Account, Currency, Budget } from "./types";
-
-interface Preferences {
-  apiKey: string;
-  forceRefreshCache?: boolean;
-}
+import {
+  Transaction,
+  Category,
+  Tag,
+  TransactionInput,
+  TransferInput,
+  Account,
+  Currency,
+  Budget,
+  Planning,
+} from "./types";
 
 const BASE_URL = "https://api.toshl.com";
 
-// Cache TTL in milliseconds (14 days)
+// Cache TTL in milliseconds (14 days) - used as fallback when no HTTP cache headers
 const CACHE_TTL = 14 * 24 * 60 * 60 * 1000;
 
 interface CacheEntry<T> {
   data: T;
   timestamp: number;
+  etag?: string;
+  lastModified?: string;
 }
 
 class ToshlClient {
@@ -22,7 +29,7 @@ class ToshlClient {
   private cache: Map<string, CacheEntry<unknown>> = new Map();
 
   constructor() {
-    const { apiKey, forceRefreshCache } = getPreferenceValues<Preferences>();
+    const { apiKey, forceRefreshCache } = getPreferenceValues();
 
     // Clear cache if force refresh is enabled
     if (forceRefreshCache) {
@@ -115,28 +122,72 @@ class ToshlClient {
     }
   }
 
-  private getCached<T>(key: string): T | null {
-    const entry = this.cache.get(key);
-    if (entry && Date.now() - entry.timestamp < CACHE_TTL) {
-      return entry.data as T;
-    }
-    return null;
+  private getCacheEntry(key: string): CacheEntry<unknown> | undefined {
+    return this.cache.get(key);
   }
 
-  private setCache<T>(key: string, data: T): void {
-    this.cache.set(key, { data, timestamp: Date.now() });
+  private setCache<T>(key: string, data: T, etag?: string, lastModified?: string): void {
+    this.cache.set(key, { data, timestamp: Date.now(), etag, lastModified });
+  }
+
+  /**
+   * Fetch with HTTP conditional caching using ETag and Last-Modified headers.
+   * Per Toshl API docs, 304 responses don't count against rate limits.
+   */
+  private async fetchWithCache<T>(
+    cacheKey: string,
+    endpoint: string,
+    params: Record<string, unknown> = {},
+    transform?: (data: unknown) => T,
+  ): Promise<T> {
+    const cached = this.getCacheEntry(cacheKey);
+
+    // Build conditional request headers
+    const headers: Record<string, string> = {};
+    if (cached?.etag) {
+      headers["If-None-Match"] = cached.etag;
+    }
+    if (cached?.lastModified) {
+      headers["If-Modified-Since"] = cached.lastModified;
+    }
+
+    try {
+      const response = await this.api.get(endpoint, { params, headers });
+
+      // Extract cache headers from response
+      const etag = response.headers["etag"] as string | undefined;
+      const lastModified = response.headers["last-modified"] as string | undefined;
+
+      // Transform data if needed
+      const data = transform ? transform(response.data) : (response.data as T);
+
+      // Store in cache with HTTP headers
+      this.setCache(cacheKey, data, etag, lastModified);
+      return data;
+    } catch (error) {
+      // Check for 304 Not Modified - return cached data
+      const axiosError = error as { response?: { status?: number } };
+      if (axiosError.response?.status === 304 && cached) {
+        // Update timestamp to extend local cache validity
+        this.setCache(cacheKey, cached.data as T, cached.etag, cached.lastModified);
+        return cached.data as T;
+      }
+
+      // If we have valid cached data (within TTL), return it on other errors
+      if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+        console.warn(`Using cached data for ${cacheKey} due to API error`);
+        return cached.data as T;
+      }
+
+      throw error;
+    }
   }
 
   async getCategories(params: { page?: number; per_page?: number } = { per_page: 500 }) {
-    const cacheKey = "categories";
-    const cached = this.getCached<Category[]>(cacheKey);
-    if (cached) return cached;
-
     try {
-      const response = await this.api.get<Category[]>("/categories", { params });
-      const data = response.data.filter((c) => !c.deleted);
-      this.setCache(cacheKey, data);
-      return data;
+      return await this.fetchWithCache<Category[]>("categories", "/categories", params, (data) =>
+        (data as Category[]).filter((c) => !c.deleted),
+      );
     } catch (e) {
       console.error("Failed to get categories", e);
       throw e;
@@ -144,15 +195,10 @@ class ToshlClient {
   }
 
   async getTags(params: { page?: number; per_page?: number } = { per_page: 500 }) {
-    const cacheKey = "tags";
-    const cached = this.getCached<Tag[]>(cacheKey);
-    if (cached) return cached;
-
     try {
-      const response = await this.api.get<Tag[]>("/tags", { params });
-      const data = response.data.filter((t) => !t.deleted);
-      this.setCache(cacheKey, data);
-      return data;
+      return await this.fetchWithCache<Tag[]>("tags", "/tags", params, (data) =>
+        (data as Tag[]).filter((t) => !t.deleted),
+      );
     } catch (e) {
       console.error("Failed to get tags", e);
       throw e;
@@ -160,15 +206,10 @@ class ToshlClient {
   }
 
   async getAccounts(params: { page?: number; per_page?: number } = { per_page: 100 }) {
-    const cacheKey = "accounts";
-    const cached = this.getCached<Account[]>(cacheKey);
-    if (cached) return cached;
-
     try {
-      const response = await this.api.get<Account[]>("/accounts", { params });
-      const data = response.data.sort((a, b) => a.order - b.order);
-      this.setCache(cacheKey, data);
-      return data;
+      return await this.fetchWithCache<Account[]>("accounts", "/accounts", params, (data) =>
+        (data as Account[]).sort((a, b) => a.order - b.order),
+      );
     } catch (e) {
       console.error("Failed to get accounts", e);
       throw e;
@@ -176,18 +217,14 @@ class ToshlClient {
   }
 
   async getCurrencies() {
-    const cacheKey = "currencies";
-    const cached = this.getCached<Currency[]>(cacheKey);
-    if (cached) return cached;
-
     try {
-      const response = await this.api.get<{ [key: string]: Omit<Currency, "code"> }>("/currencies");
-      const currencies = Object.entries(response.data).map(([code, details]) => ({
-        ...details,
-        code,
-      }));
-      this.setCache(cacheKey, currencies);
-      return currencies;
+      return await this.fetchWithCache<Currency[]>("currencies", "/currencies", {}, (data) => {
+        const currencyMap = data as { [key: string]: Omit<Currency, "code"> };
+        return Object.entries(currencyMap).map(([code, details]) => ({
+          ...details,
+          code,
+        }));
+      });
     } catch (e) {
       console.error("Failed to get currencies", e);
       throw e;
@@ -204,12 +241,38 @@ class ToshlClient {
     }
   }
 
+  async getDefaultCurrency(): Promise<string> {
+    const cacheKey = "defaultCurrency";
+    const cached = this.getCacheEntry(cacheKey);
+    if (cached) return cached.data as string;
+
+    try {
+      const me = await this.getMe();
+      const currency = me?.currency?.main || "USD";
+      this.setCache(cacheKey, currency);
+      return currency;
+    } catch (e) {
+      console.error("Failed to get default currency", e);
+      return "USD"; // Fallback
+    }
+  }
+
   async getBudgets(params: { from?: string; to?: string; page?: number; per_page?: number } = {}) {
     try {
       const response = await this.api.get<Budget[]>("/budgets", { params });
       return response.data.filter((b) => !b.deleted);
     } catch (e) {
       console.error("Failed to get budgets", e);
+      throw e;
+    }
+  }
+
+  async getPlanning(params: { from: string; to: string }) {
+    try {
+      const response = await this.api.get<Planning>("/planning", { params });
+      return response.data;
+    } catch (e) {
+      console.error("Failed to get planning", e);
       throw e;
     }
   }

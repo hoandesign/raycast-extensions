@@ -11,30 +11,32 @@ A powerful Raycast extension for managing your [Toshl Finance](https://toshl.com
 ### Manual Commands
 
 | Command | Description |
-|---------|-------------|
+| ------- | ----------- |
 | **Add Expense** | Quick form to add expenses with category, tags, account, and recurring options |
 | **Add Income** | Quick form to add income entries |
 | **Add Transfer** | Transfer money between accounts |
-| **Recent Transactions** | View, edit, and delete recent transactions (30 days) |
+| **Recent Transactions** | View, edit, and delete recent transactions (beautifully grouped by date with summary headers) |
 | **Search Entries** | Advanced filtering by date range, type, category, tags, account, and description |
+| **View Planning** | View monthly/yearly spending plan and predictions (Pro feature) |
 | **Budgets** | View your budget progress and spending limits |
 
 ### AI Tools (Raycast AI Chat)
 
 Chat naturally with Raycast AI to manage your finances:
 
-```
-"Add 50k for lunch today"
+```text
+"Add $50 for lunch today"
 "Show my expenses this month"  
 "What's my food budget?"
 "List my categories"
 ```
 
 | AI Tool | Description |
-|---------|-------------|
+| ------- | ----------- |
 | `add-expense` | Add expenses with Vietnamese shortcuts (50k, 3 triệu) |
 | `add-income` | Add income entries |
 | `search-entries` | Search and filter transactions |
+| `get-planning` | Get monthly/yearly financial plan and outlook |
 | `get-budgets` | Check budget status |
 | `list-categories-tags` | List categories, tags, and accounts |
 
@@ -43,15 +45,16 @@ Chat naturally with Raycast AI to manage your finances:
 - 🇻🇳 **Vietnamese Support**: Amount shortcuts (50k, 3tr, 5 triệu) and bilingual responses
 - 📅 **Flexible Dates**: today, yesterday, DD/MM, DD/MM/YYYY
 - 🔄 **Recurring Entries**: Daily, weekly, monthly, yearly repeats
-- 💱 **Multi-Currency**: Supports all Toshl currencies
+- 💱 **Currency Symbols**: Automatic support for 50+ currency symbols ($, €, ₫, etc.)
+- 🎯 **Auto-Currency**: Default currency is auto-detected from your Toshl settings
 - 🔵 **Transfer Detection**: Blue icons for account-to-account transfers
-- ⚡ **14-Day Cache**: Fast performance with manual refresh option
+- ⚡ **HTTP Caching**: Optimized performance using ETag and Last-Modified headers
 
 ---
 
 ## 🏗️ Codebase Structure
 
-```
+```text
 src/
 ├── components/
 │   ├── TransactionForm.tsx   # Shared form for expense/income (create & edit)
@@ -60,17 +63,19 @@ src/
 │   ├── add-expense.ts        # AI: Add expense
 │   ├── add-income.ts         # AI: Add income  
 │   ├── get-budgets.ts        # AI: Get budget status
+│   ├── get-planning.ts       # AI: Get planning outlook
 │   ├── list-categories-tags.ts # AI: List categories/tags/accounts
 │   └── search-entries.ts     # AI: Search & filter entries
 ├── utils/
 │   ├── toshl.ts              # ToshlClient API wrapper with caching
 │   ├── types.ts              # TypeScript interfaces
-│   └── helpers.ts            # Shared utilities (parseAmount, parseDate)
+│   └── helpers.ts            # Shared utilities (parseAmount, parseDate, symbols)
 ├── expense.tsx               # Add Expense command
 ├── income.tsx                # Add Income command
 ├── transfer.tsx              # Add Transfer command
 ├── recent-transactions.tsx   # Recent Transactions list
 ├── search-entries.tsx        # Advanced Search UI
+├── planning.tsx              # View Planning command
 └── budgets.tsx               # Budgets view
 ```
 
@@ -104,11 +109,15 @@ graph LR
 
 ```mermaid
 graph TD
-    A[Request categories/tags/accounts] --> B{Cache valid?}
-    B -->|Yes, < 14 days| C[Return cached data]
-    B -->|No or Force Refresh| D[Fetch from Toshl API]
-    D --> E[Store in cache]
-    E --> C
+    A[Request Data] --> B{Cache Headers Present?}
+    B -->|Yes| C[Conditional Request: If-None-Match / If-Modified-Since]
+    B -->|No| D[Simple GET Request]
+    C --> E{304 Not Modified?}
+    E -->|Yes| F[Return Cached Data]
+    E -->|No| G[Fetch New Data & Update Cache]
+    D --> G
+    G --> H[Return Success]
+    F --> H
 ```
 
 ---
@@ -116,7 +125,7 @@ graph TD
 ## 🛠️ Tech Stack
 
 | Technology | Purpose |
-|------------|---------|
+| ---------- | ------- |
 | **TypeScript** | Type-safe development |
 | **React** | Raycast UI components |
 | **@raycast/api** | Raycast extension framework |
@@ -134,8 +143,7 @@ graph TD
 
 ### Optional
 
-- **Default Currency**: Default currency code (e.g., VND, USD)
-- **Force Refresh Cache**: Clear 14-day cache manually
+- **Force Refresh Cache**: Clear cached data manually to force fresh fetch from API
 
 ---
 
@@ -169,7 +177,9 @@ This extension uses the [Toshl API v2](https://developer.toshl.com/docs/):
 - `GET /tags` - List tags
 - `GET /accounts` - List accounts
 - `GET /budgets` - List budgets
+- `GET /planning` - Get financial planning
 - `GET /currencies` - List supported currencies
+- `GET /me` - Get user profile and default settings
 
 ---
 

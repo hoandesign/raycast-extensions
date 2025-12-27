@@ -140,3 +140,34 @@ export interface Budget {
   accounts?: string[];
   deleted?: boolean;
 }
+
+export interface PlanningItem {
+  sum: number;
+  planned: number;
+  predicted: number;
+}
+
+export interface PlanningPeriod {
+  from: string;
+  to: string;
+  expenses: PlanningItem;
+  incomes: PlanningItem;
+  balance: PlanningItem;
+  estimated?: PlanningItem;
+}
+
+export interface Planning {
+  avg: {
+    expenses: number;
+    incomes: number;
+    balance: number;
+    networth: number;
+  };
+  ranges: {
+    expenses: { min: number; max: number };
+    incomes: { min: number; max: number };
+    balance: { min: number; max: number };
+    networth: { min: number; max: number };
+  };
+  planning: PlanningPeriod[];
+}
