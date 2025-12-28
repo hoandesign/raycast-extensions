@@ -2,7 +2,9 @@
 
 ## [1.1.1] - {PR_MERGE_DATE}
 
-- Add detailed extension description and screenshots, including AI support, and refactor preference retrieval.
+- **Refactoring**: Simplified internal helper logic to rely on AI for date and amount standardization (removed manual regex parsing).
+- **Dependencies**: Updated to React 19 and @raycast/utils 2.x for better performance and stability.
+- **Documentation**: Updated README and metadata to reflect the new AI-native capabilities.
 
 ## [1.1.0] - {PR_MERGE_DATE}
 

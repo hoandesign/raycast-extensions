@@ -1,9 +1,11 @@
 import { toshl } from "../utils/toshl";
-import { parseAmount, parseDate, formatDisplayAmount, AI_INSTRUCTIONS } from "../utils/helpers";
+import { parseAmount, formatDisplayAmount, AI_INSTRUCTIONS } from "../utils/helpers";
+import { format } from "date-fns";
 
 type Input = {
   /**
-   * The amount of money spent. Supports: '50k', '3 triệu', '3tr', or plain numbers.
+   * The amount of money spent. MUST be a number or string number (e.g., "50000", "1500000").
+   * Do NOT use shortcuts like '50k' or '3tr'. Convert them to full numeric values.
    */
   amount: string;
   /**
@@ -27,7 +29,8 @@ type Input = {
    */
   currency?: string;
   /**
-   * Date. Supports: 'today', 'yesterday', 'DD/MM', 'DD/MM/YYYY'. Defaults to today.
+   * Date of transaction in YYYY-MM-DD format (e.g., "2023-10-27").
+   * Default to today if not provided.
    */
   date?: string;
 };
@@ -37,7 +40,7 @@ export default async function addExpense(input: Input) {
   const apiDefaultCurrency = await toshl.getDefaultCurrency();
   const { amount, description, categoryId, tagIds, accountId, currency = apiDefaultCurrency, date } = input;
   const parsedAmount = parseAmount(amount);
-  const parsedDate = parseDate(date);
+  const parsedDate = date || format(new Date(), "yyyy-MM-dd");
 
   // Fetch categories, tags, accounts from Toshl
   const [categories, allTags, accounts] = await Promise.all([

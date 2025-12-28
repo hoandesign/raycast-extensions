@@ -33,7 +33,7 @@ Chat naturally with Raycast AI to manage your finances:
 
 | AI Tool | Description |
 | ------- | ----------- |
-| `add-expense` | Add expenses with Vietnamese shortcuts (50k, 3 triệu) |
+| `add-expense` | Add expenses using natural language (e.g., "50k lunch") |
 | `add-income` | Add income entries |
 | `search-entries` | Search and filter transactions |
 | `get-planning` | Get monthly/yearly financial plan and outlook |
@@ -42,8 +42,8 @@ Chat naturally with Raycast AI to manage your finances:
 
 ### Special Features
 
-- 🇻🇳 **Vietnamese Support**: Amount shortcuts (50k, 3tr, 5 triệu) and bilingual responses
-- 📅 **Flexible Dates**: today, yesterday, DD/MM, DD/MM/YYYY
+- 🇻🇳 **Vietnamese Support**: AI understands shortcuts like "50k", "3tr", "5 triệu"
+- 📅 **Smart Dates**: AI automatically detects dates like "today", "yesterday", "last Friday"
 - 🔄 **Recurring Entries**: Daily, weekly, monthly, yearly repeats
 - 💱 **Currency Symbols**: Automatic support for 50+ currency symbols ($, €, ₫, etc.)
 - 🎯 **Auto-Currency**: Default currency is auto-detected from your Toshl settings
@@ -98,11 +98,12 @@ graph LR
 
 ```mermaid
 graph LR
-    A[User: 'Add 50k lunch'] --> B[AI calls add-expense tool]
-    B --> C[parseAmount: 50k → 50000]
-    C --> D[list-categories-tags for mapping]
-    D --> E[POST to Toshl API]
-    E --> F[AI confirms in user's language]
+    A[User: 'Add 50k lunch'] --> B[AI processes input]
+    B --> C[AI converts '50k' to 50000]
+    C --> D[AI calls add-expense(amount: 50000)]
+    D --> E[Check cache for category/tag IDs]
+    E --> F[POST to Toshl API]
+    F --> G[AI confirms in user's language]
 ```
 
 ### Caching Flow
