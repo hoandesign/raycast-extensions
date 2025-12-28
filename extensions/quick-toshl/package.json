@@ -3,6 +3,7 @@
   "name": "quick-toshl",
   "title": "Quick Toshl",
   "description": "Add expense and income to your Toshl account",
+  "version": "1.1.1",
   "icon": "extension-icon.png",
   "author": "hoando",
   "platforms": [
@@ -18,49 +19,43 @@
     {
       "name": "expense",
       "title": "Add Expense",
-      "subtitle": "Add Expense to Toshl",
       "description": "Add a new expense transaction to Toshl",
       "mode": "view"
     },
     {
       "name": "income",
       "title": "Add Income",
-      "subtitle": "Add Income to Toshl",
       "description": "Add a new income transaction to Toshl",
       "mode": "view"
     },
     {
       "name": "recent-transactions",
       "title": "Recent Transactions",
-      "subtitle": "View Recent Transactions",
       "description": "View and manage recent Toshl transactions",
       "mode": "view"
     },
     {
       "name": "transfer",
       "title": "Add Transfer",
-      "subtitle": "Transfer Between Accounts",
       "description": "Move money from one account to another",
       "mode": "view"
     },
     {
       "name": "budgets",
       "title": "View Budgets",
-      "subtitle": "Budget Progress",
+      "subtitle": "Progress",
       "description": "View your budget progress and spending",
       "mode": "view"
     },
     {
       "name": "search-entries",
       "title": "Search Entries",
-      "subtitle": "Filter & Search",
       "description": "Search and filter all entries by date range, category, tags, account, and more",
       "mode": "view"
     },
     {
       "name": "planning",
       "title": "View Planning",
-      "subtitle": "Monthly/Yearly Planning",
       "description": "View your spending plan and predictions for this month or year (Pro feature)",
       "mode": "view"
     }
@@ -105,6 +100,7 @@
       "name": "apiKey",
       "title": "Toshl API Key",
       "description": "Your Toshl API Personal Token",
+      "placeholder": "Isabella",
       "type": "password",
       "required": true
     },
@@ -114,6 +110,15 @@
       "description": "Enable this, run any command, then disable it. This will refresh cached categories, tags, and accounts.",
       "type": "checkbox",
       "label": "Clear cache on next run",
+      "required": false,
+      "default": false
+    },
+    {
+      "name": "demoData",
+      "title": "Demo Data",
+      "description": "Use fake data for demonstration purposes (useful for screenshots).",
+      "type": "checkbox",
+      "label": "Enable Demo Data",
       "required": false,
       "default": false
     }

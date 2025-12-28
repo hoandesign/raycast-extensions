@@ -11,6 +11,7 @@ import {
   Budget,
   Planning,
 } from "./types";
+import { MOCK_ACCOUNTS, MOCK_BUDGETS, MOCK_CATEGORIES, MOCK_PLANNING, MOCK_TAGS, MOCK_TRANSACTIONS } from "./mockData";
 
 const BASE_URL = "https://api.toshl.com";
 
@@ -27,9 +28,11 @@ interface CacheEntry<T> {
 class ToshlClient {
   private api: AxiosInstance;
   private cache: Map<string, CacheEntry<unknown>> = new Map();
+  private isDemo: boolean;
 
   constructor() {
-    const { apiKey, forceRefreshCache } = getPreferenceValues();
+    const { apiKey, forceRefreshCache, demoData } = getPreferenceValues();
+    this.isDemo = demoData;
 
     // Clear cache if force refresh is enabled
     if (forceRefreshCache) {
@@ -66,6 +69,7 @@ class ToshlClient {
   }
 
   async getTransactions(params: { from?: string; to?: string; page?: number; per_page?: number } = {}) {
+    if (this.isDemo) return MOCK_TRANSACTIONS;
     try {
       const response = await this.api.get<Transaction[]>("/entries", { params });
       return response.data;
@@ -76,6 +80,10 @@ class ToshlClient {
   }
 
   async addTransaction(transaction: TransactionInput) {
+    if (this.isDemo) {
+      await new Promise((resolve) => setTimeout(resolve, 500)); // Fake realistic delay
+      return MOCK_TRANSACTIONS[0];
+    }
     try {
       const response = await this.api.post<Transaction>("/entries", transaction);
       return response.data;
@@ -86,6 +94,10 @@ class ToshlClient {
   }
 
   async addTransfer(transfer: TransferInput) {
+    if (this.isDemo) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      return MOCK_TRANSACTIONS[0];
+    }
     try {
       const response = await this.api.post<Transaction>("/entries", transfer);
       return response.data;
@@ -96,6 +108,10 @@ class ToshlClient {
   }
 
   async updateTransaction(id: string, transaction: TransactionInput, mode?: "one" | "tail" | "all") {
+    if (this.isDemo) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      return MOCK_TRANSACTIONS[0];
+    }
     try {
       const params = mode ? { update: mode } : {};
       console.log("Update request:", { id, params, payload: JSON.stringify(transaction) });
@@ -113,6 +129,10 @@ class ToshlClient {
   }
 
   async deleteTransaction(id: string, mode?: "one" | "tail" | "all") {
+    if (this.isDemo) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      return;
+    }
     try {
       const params = mode ? { delete: mode } : {};
       await this.api.delete(`/entries/${id}`, { params });
@@ -184,6 +204,7 @@ class ToshlClient {
   }
 
   async getCategories(params: { page?: number; per_page?: number } = { per_page: 500 }) {
+    if (this.isDemo) return MOCK_CATEGORIES;
     try {
       return await this.fetchWithCache<Category[]>("categories", "/categories", params, (data) =>
         (data as Category[]).filter((c) => !c.deleted),
@@ -195,6 +216,7 @@ class ToshlClient {
   }
 
   async getTags(params: { page?: number; per_page?: number } = { per_page: 500 }) {
+    if (this.isDemo) return MOCK_TAGS;
     try {
       return await this.fetchWithCache<Tag[]>("tags", "/tags", params, (data) =>
         (data as Tag[]).filter((t) => !t.deleted),
@@ -206,6 +228,7 @@ class ToshlClient {
   }
 
   async getAccounts(params: { page?: number; per_page?: number } = { per_page: 100 }) {
+    if (this.isDemo) return MOCK_ACCOUNTS;
     try {
       return await this.fetchWithCache<Account[]>("accounts", "/accounts", params, (data) =>
         (data as Account[]).sort((a, b) => a.order - b.order),
@@ -217,6 +240,7 @@ class ToshlClient {
   }
 
   async getCurrencies() {
+    if (this.isDemo) return [];
     try {
       return await this.fetchWithCache<Currency[]>("currencies", "/currencies", {}, (data) => {
         const currencyMap = data as { [key: string]: Omit<Currency, "code"> };
@@ -232,6 +256,7 @@ class ToshlClient {
   }
 
   async getMe() {
+    if (this.isDemo) return { currency: { main: "USD" } };
     try {
       const response = await this.api.get("/me");
       return response.data;
@@ -242,6 +267,7 @@ class ToshlClient {
   }
 
   async getDefaultCurrency(): Promise<string> {
+    if (this.isDemo) return "USD";
     const cacheKey = "defaultCurrency";
     const cached = this.getCacheEntry(cacheKey);
     if (cached) return cached.data as string;
@@ -258,6 +284,7 @@ class ToshlClient {
   }
 
   async getBudgets(params: { from?: string; to?: string; page?: number; per_page?: number } = {}) {
+    if (this.isDemo) return MOCK_BUDGETS;
     try {
       const response = await this.api.get<Budget[]>("/budgets", { params });
       return response.data.filter((b) => !b.deleted);
@@ -268,6 +295,7 @@ class ToshlClient {
   }
 
   async getPlanning(params: { from: string; to: string }) {
+    if (this.isDemo) return MOCK_PLANNING;
     try {
       const response = await this.api.get<Planning>("/planning", { params });
       return response.data;

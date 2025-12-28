@@ -150,6 +150,7 @@ export function TransactionForm({ type, transaction, onSubmit }: TransactionForm
         isLoadingCurrencies ||
         isLoadingDefaultCurrency
       }
+      navigationTitle={transaction ? "Edit Transaction" : "New Transaction"}
       actions={
         <ActionPanel>
           <Action.SubmitForm

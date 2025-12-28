@@ -2,12 +2,6 @@
 
 ## [1.1.1] - {PR_MERGE_DATE}
 
-- **Refactoring**: Simplified internal helper logic to rely on AI for date and amount standardization (removed manual regex parsing).
-- **Dependencies**: Updated to React 19 and @raycast/utils 2.x for better performance and stability.
-- **Documentation**: Updated README and metadata to reflect the new AI-native capabilities.
-
-## [1.1.0] - {PR_MERGE_DATE}
-
 ### Added
 
 - **Spending Planning**: New command to view monthly/yearly outlook, predictions, and actual performance (Pro feature).
@@ -20,6 +14,9 @@
 - **Transaction Lists**: Entries are now beautifully grouped by date with summary headers showing Total, Expenses, Income, and Net.
 - **Performance**: Switched to HTTP conditional caching (ETag/Last-Modified) for much faster loads and reduced API hits.
 - **UI/UX**: Refined transaction and budget views with better spacing and symbol support.
+- **Refactoring**: Simplified internal helper logic to rely on AI for date and amount standardization (removed manual regex parsing).
+- **Dependencies**: Updated to React 19 and @raycast/utils 2.x for better performance and stability.
+- **Documentation**: Updated README and metadata to reflect the new AI-native capabilities.
 
 ### Fixed
 
