@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.3.0] - {PR_MERGE_DATE}
+## [1.3.0] - 2026-01-15
 
 - feat: Add Solar/Lunar date cycle switch in Day Detail view to track recurring events.
 - feat: Smart date selection: automatically defaults to Lunar Cycle for lunar holidays and important lunar days (1st/15th).
