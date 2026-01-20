@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.3.1] - {PR_MERGE_DATE}
+## [1.3.1] - 2026-01-20
 
 - feat: Add "Văn hoá VN" event (Nov 24) starting from 2026.
 
