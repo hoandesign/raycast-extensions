@@ -30,7 +30,7 @@
     },
     {
       "name": "recent-transactions",
-      "title": "Recent Transactions",
+      "title": "View Transactions",
       "description": "View and manage recent Toshl transactions",
       "mode": "view"
     },
@@ -43,7 +43,6 @@
     {
       "name": "budgets",
       "title": "View Budgets",
-      "subtitle": "Progress",
       "description": "View your budget progress and spending",
       "mode": "view"
     },
@@ -100,7 +99,7 @@
       "name": "apiKey",
       "title": "Toshl API Key",
       "description": "Your Toshl API Personal Token",
-      "placeholder": "Isabella",
+      "placeholder": "Enter your Personal Token",
       "type": "password",
       "required": true
     },
@@ -131,12 +130,12 @@
     "react": "^19.2.3"
   },
   "devDependencies": {
-    "@raycast/eslint-config": "^2.0.4",
-    "@types/node": "^25.0.3",
-    "@types/react": "^19.2.7",
-    "eslint": "^9.22.0",
-    "prettier": "^3.5.3",
-    "typescript": "^5.8.2"
+    "@raycast/eslint-config": "^2.1.1",
+    "@types/node": "^25.0.9",
+    "@types/react": "^19.2.9",
+    "eslint": "^9.39.2",
+    "prettier": "^3.8.0",
+    "typescript": "^5.9.3"
   },
   "scripts": {
     "build": "ray build",
