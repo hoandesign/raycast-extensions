@@ -118,9 +118,9 @@
   "dependencies": {
     "@raycast/api": "1.52.1",
     "@raycast/utils": "1.7.0",
-    "got": "12.5.3",
+    "got": "14.6.6",
     "human-date": "1.4.0",
-    "node-vault": "0.9.22"
+    "node-vault": "0.10.9"
   },
   "devDependencies": {
     "@raycast/eslint-config": "1.0.5",
